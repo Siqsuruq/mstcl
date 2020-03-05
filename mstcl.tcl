@@ -22,7 +22,7 @@ nx::Class create Mapfile {
 		}
 	}
 	
-	:public method strip_comments {path} {
+	:public method "strip_comments" {path} {
 		set commentChars "#"
 		set map_file [file join $path ${:name}]
 		set stripped ""
@@ -32,13 +32,11 @@ nx::Class create Mapfile {
 		set data [split $file_data "\n"]
 		foreach line $data {
 			regsub -all -line "\[$commentChars\].*$" $line "" commentStripped
-			puts $commentStripped
 			regsub "^\[ \t]*$" $commentStripped {} fline
 			if {$fline ne ""} {
 				append stripped "" $fline\n
 			}
 		}
-		puts "****************************************"
 		return $stripped
 	}
 	
