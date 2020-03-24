@@ -28,6 +28,9 @@ nx::Class create Mapfile {
 		# Creating xmlMapFile in memory
 		dom createDocument Map :doc
 		set :root [${:doc} documentElement]
+		dom createDocument Map :ldoc
+		set :lroot [${:ldoc} documentElement]
+		
 	}
 
 	:public method "save" {} {
@@ -69,11 +72,11 @@ nx::Class create Mapfile {
 	}
 	
 	:private method "parse_line" {line} {
-		set keywords [list MAP ANGLE NAME EXTENT SIZE END LAYER STYLE]
+		set keywords [list MAP ANGLE NAME EXTENT SIZE END LAYER STYLE IMAGETYPE IMAGECOLOR]
 		foreach kw $keywords {
 			set a [lsearch -inline $line $kw*]
 			if {$a != ""} {
-				puts "PARSING $line KEY $kw"
+				# puts "PARSING $line KEY $kw"
 				switch  $kw {
 					MAP {
 						lappend  ${:stack} $kw
@@ -81,8 +84,12 @@ nx::Class create Mapfile {
 					}
 					NAME {
 						set work_node [lindex ${:stack} end]
+						puts "CURRENT WORK NODE IS: $work_node"
 						if {$work_node eq "MAP"} {
 							[${:root} getElementsByTagName Map] setAttribute name "[lindex $line 1]"
+						} elseif {$work_node eq "LAYER"} {
+							$node setAttribute $attr $attr_val
+							[${:root} getElementsByTagName Layer] setAttribute name "[lindex $line 1]"
 						}
 					}
 					LAYER {
@@ -91,17 +98,21 @@ nx::Class create Mapfile {
 						${:root} appendChild $layer_node
 					}
 					EXTENT {
-						set extend_node [${:doc} createElement extent]
-						$extend_node appendChild [${:doc} createTextNode "[lrange $line 1 end]"]
-						${:root} appendChild $extend_node
+						: -local add_key_val extent [lrange $line 1 end]
 					}
 					ANGLE {
-						set angle_node [${:doc} createElement angle]
-						$angle_node appendChild [${:doc} createTextNode "[lindex $line 1]"]
-						${:root} appendChild $angle_node
+						: -local add_key_val angle [lindex $line 1]
 					}
 					SIZE {
-						# CkXml_NewChild2 ${:root} "extent" "[lrange $line 1 end]"
+						set vals [lrange $line 1 end]
+						: -local add_key_attr size [dict create x [lindex $vals 0] y [lindex $vals 1]]
+					}
+					IMAGETYPE {
+						: -local add_key_val imageType [lindex $line 1]
+					}
+					IMAGECOLOR {
+						set vals [lrange $line 1 end]
+						: -local add_key_attr imageColor [dict create red [lindex $vals 0] green [lindex $vals 1] blue [lindex $vals 2]]
 					}
 					END {
 						
@@ -111,6 +122,19 @@ nx::Class create Mapfile {
 		}
 		# puts "$line"		
 	} 
+	:private method add_key_val {key value} {
+		set node [${:doc} createElement $key]
+		$node appendChild [${:doc} createTextNode $value]
+		${:root} appendChild $node
+	}
+	
+	:private method add_key_attr {key attrd} {
+		set node [${:doc} createElement $key]
+		foreach attr [dict keys $attrd] attr_val [dict values $attrd] {
+			$node setAttribute $attr $attr_val
+		}
+		${:root} appendChild $node
+	}
 	
 	:public method "xml" {args} {
 		return [${:doc} asXML -xmlDeclaration 1 -encString UTF-8]
