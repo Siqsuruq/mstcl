@@ -26,11 +26,8 @@ nx::Class create Mapfile {
 		}
 
 		# Creating xmlMapFile in memory
-		dom createDocument Map :doc
-		set :root [${:doc} documentElement]
-		dom createDocument Map :ldoc
-		set :lroot [${:ldoc} documentElement]
-		
+		dom createDocumentNode :doc
+		# set :root [${:doc} documentElement]
 	}
 
 	:public method "save" {} {
@@ -72,30 +69,30 @@ nx::Class create Mapfile {
 	}
 	
 	:private method "parse_line" {line} {
-		set keywords [list MAP ANGLE NAME EXTENT SIZE END LAYER STYLE IMAGETYPE IMAGECOLOR]
+		# set keywords [list MAP ANGLE NAME SHAPEPATH DATA EXTENT SIZE END LAYER STYLE IMAGETYPE IMAGECOLOR]
+		set keywords [list MAP ANGLE NAME SHAPEPATH DATA EXTENT SIZE END STYLE IMAGETYPE IMAGECOLOR]
 		foreach kw $keywords {
 			set a [lsearch -inline $line $kw*]
 			if {$a != ""} {
 				# puts "PARSING $line KEY $kw"
 				switch  $kw {
 					MAP {
-						lappend  ${:stack} $kw
-						# CkXml_put_Tag ${:root} "Map"
+						set node [${:doc} createElement Map]
+						${:doc} appendChild $node
+						set :stack [lappend  ${:stack} $node]
 					}
 					NAME {
 						set work_node [lindex ${:stack} end]
-						puts "CURRENT WORK NODE IS: $work_node"
-						if {$work_node eq "MAP"} {
-							[${:root} getElementsByTagName Map] setAttribute name "[lindex $line 1]"
-						} elseif {$work_node eq "LAYER"} {
-							$node setAttribute $attr $attr_val
-							[${:root} getElementsByTagName Layer] setAttribute name "[lindex $line 1]"
-						}
+						$work_node setAttribute name "[lindex $line 1]"
 					}
 					LAYER {
-						lappend  ${:stack} $kw
-						set layer_node [${:doc} createElement Layer]
-						${:root} appendChild $layer_node
+						set work_node [lindex ${:stack} end]
+						set node [${:doc} createElement Layer]
+						$work_node appendChild $node
+						set :stack [lappend  ${:stack} $node]
+					}
+					DATA {
+						: -local add_key_val data [lindex $line 1]
 					}
 					EXTENT {
 						: -local add_key_val extent [lrange $line 1 end]
@@ -114,8 +111,12 @@ nx::Class create Mapfile {
 						set vals [lrange $line 1 end]
 						: -local add_key_attr imageColor [dict create red [lindex $vals 0] green [lindex $vals 1] blue [lindex $vals 2]]
 					}
+					SHAPEPATH {
+						: -local add_key_val shapePath [lindex $line 1]
+					}
 					END {
-						
+						# set :stack [lreplace ${:stack} end end]
+						# puts "STACK IS ${:stack}"
 					}
 				}
 			}
@@ -123,17 +124,19 @@ nx::Class create Mapfile {
 		# puts "$line"		
 	} 
 	:private method add_key_val {key value} {
+		set work_node [lindex ${:stack} end]
 		set node [${:doc} createElement $key]
 		$node appendChild [${:doc} createTextNode $value]
-		${:root} appendChild $node
+		$work_node appendChild $node
 	}
 	
 	:private method add_key_attr {key attrd} {
+			set work_node [lindex ${:stack} end]
 		set node [${:doc} createElement $key]
 		foreach attr [dict keys $attrd] attr_val [dict values $attrd] {
 			$node setAttribute $attr $attr_val
 		}
-		${:root} appendChild $node
+		$work_node appendChild $node
 	}
 	
 	:public method "xml" {args} {
