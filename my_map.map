@@ -51,7 +51,7 @@ MAP
   LAYER # States line layer begins here
     NAME         states_line
     DATA         states_ugl
-    STATUS       OFF
+    STATUS       ON
     TYPE         LINE
 
     CLASS
