@@ -69,8 +69,8 @@ nx::Class create Mapfile {
 	}
 	
 	:private method "parse_line" {line} {
-		# set keywords [list MAP ANGLE NAME SHAPEPATH DATA EXTENT SIZE END LAYER STYLE IMAGETYPE IMAGECOLOR]
-		set keywords [list MAP ANGLE NAME SHAPEPATH DATA EXTENT SIZE END STYLE IMAGETYPE IMAGECOLOR]
+		set keywords [list MAP ANGLE NAME SHAPEPATH STATUS DATA EXTENT SIZE END LAYER STYLE IMAGETYPE IMAGECOLOR]
+		# set keywords [list MAP ANGLE NAME SHAPEPATH DATA EXTENT SIZE END STYLE IMAGETYPE IMAGECOLOR]
 		foreach kw $keywords {
 			set a [lsearch -inline $line $kw*]
 			if {$a != ""} {
@@ -113,6 +113,11 @@ nx::Class create Mapfile {
 					}
 					SHAPEPATH {
 						: -local add_key_val shapePath [lindex $line 1]
+					}
+					STATUS {
+						set work_node [lindex ${:stack} end]
+						$work_node setAttribute status "[lindex $line 1]"
+						# : -local add_key_attr status [lindex $line 1]
 					}
 					END {
 						# set :stack [lreplace ${:stack} end end]
