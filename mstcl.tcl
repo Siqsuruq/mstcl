@@ -1,7 +1,7 @@
 package require nx
 package require tdom
 package require fileutil
-package require chilkat
+# package require chilkat
 
 
 nx::Class create Mapfile {
@@ -70,7 +70,7 @@ nx::Class create Mapfile {
 	
 	:private method "parse_line" {line} {
 		# set keywords [list MAP ANGLE NAME SHAPEPATH DATA EXTENT SIZE END LAYER STYLE IMAGETYPE IMAGECOLOR]
-		set keywords [list MAP ANGLE NAME SHAPEPATH DATA EXTENT SIZE END STYLE IMAGETYPE IMAGECOLOR]
+		set keywords [list MAP ANGLE NAME LAYER CLASS STYLE SHAPEPATH DATA EXTENT SIZE END STYLE IMAGETYPE IMAGECOLOR COLOR]
 		foreach kw $keywords {
 			set a [lsearch -inline $line $kw*]
 			if {$a != ""} {
@@ -79,7 +79,8 @@ nx::Class create Mapfile {
 					MAP {
 						set node [${:doc} createElement Map]
 						${:doc} appendChild $node
-						set :stack [lappend  ${:stack} $node]
+						set :stack [lappend :stack $node]
+						puts "MAP STACK IS ${:stack}"
 					}
 					NAME {
 						set work_node [lindex ${:stack} end]
@@ -89,7 +90,8 @@ nx::Class create Mapfile {
 						set work_node [lindex ${:stack} end]
 						set node [${:doc} createElement Layer]
 						$work_node appendChild $node
-						set :stack [lappend  ${:stack} $node]
+						set :stack [lappend :stack $node]
+							puts "LAYER STACK IS ${:stack}"
 					}
 					DATA {
 						: -local add_key_val data [lindex $line 1]
@@ -111,12 +113,29 @@ nx::Class create Mapfile {
 						set vals [lrange $line 1 end]
 						: -local add_key_attr imageColor [dict create red [lindex $vals 0] green [lindex $vals 1] blue [lindex $vals 2]]
 					}
+					COLOR {
+						set vals [lrange $line 1 end]
+						: -local add_key_attr color [dict create red [lindex $vals 0] green [lindex $vals 1] blue [lindex $vals 2]]
+					}
 					SHAPEPATH {
 						: -local add_key_val shapePath [lindex $line 1]
 					}
+					STYLE {
+						set work_node [lindex ${:stack} end]
+						set node [${:doc} createElement Style]
+						$work_node appendChild $node
+						set :stack [lappend :stack $node]
+					}
+					CLASS {
+						set work_node [lindex ${:stack} end]
+						set node [${:doc} createElement Class]
+						$work_node appendChild $node
+						set :stack [lappend :stack $node]
+					}
 					END {
-						# set :stack [lreplace ${:stack} end end]
-						# puts "STACK IS ${:stack}"
+						puts "STACK IS ${:stack}"
+						set :stack [lreplace ${:stack} end end]
+
 					}
 				}
 			}
