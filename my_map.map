@@ -46,7 +46,7 @@ MAP
         COLOR    232 232 232
       END
     END
-  END # States polygon layer ends here
+  END
 
   LAYER # States line layer begins here
     NAME         states_line
@@ -60,7 +60,8 @@ MAP
         COLOR    32 32 32
       END
     END
-  END # States line layer ends here
+  END
+
   # End of LAYER DEFINITIONS -------------------------------
 
 END # All map files must come to an end just as all other things must come to...

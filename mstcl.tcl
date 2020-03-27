@@ -45,6 +45,7 @@ nx::Class create Mapfile {
 			foreach line $data {
 				: -local parse_line $line
 			}
+			puts "--------------------------------------------------------"
 			puts [: -local xml]
 		} else {
 			return "File doesnt exists."
@@ -69,29 +70,25 @@ nx::Class create Mapfile {
 	}
 	
 	:private method "parse_line" {line} {
-		# set keywords [list MAP ANGLE NAME SHAPEPATH DATA EXTENT SIZE END LAYER STYLE IMAGETYPE IMAGECOLOR]
-		set keywords [list MAP ANGLE NAME LAYER CLASS STYLE SHAPEPATH DATA EXTENT SIZE END STYLE IMAGETYPE IMAGECOLOR COLOR]
+		set keywords [list MAP NAME END LAYER CLASS STYLE ANGLE SHAPEPATH DATA EXTENT SIZE IMAGETYPE IMAGECOLOR COLOR STATUS TYPE]
 		foreach kw $keywords {
 			set a [lsearch -inline $line $kw*]
 			if {$a != ""} {
-				# puts "PARSING $line KEY $kw"
+
 				switch  $kw {
 					MAP {
 						set node [${:doc} createElement Map]
 						${:doc} appendChild $node
 						set :stack [lappend :stack $node]
-						puts "MAP STACK IS ${:stack}"
 					}
 					NAME {
-						set work_node [lindex ${:stack} end]
-						$work_node setAttribute name "[lindex $line 1]"
+						: -local attr name [lindex $line 1]
 					}
 					LAYER {
 						set work_node [lindex ${:stack} end]
 						set node [${:doc} createElement Layer]
 						$work_node appendChild $node
 						set :stack [lappend :stack $node]
-							puts "LAYER STACK IS ${:stack}"
 					}
 					DATA {
 						: -local add_key_val data [lindex $line 1]
@@ -132,16 +129,20 @@ nx::Class create Mapfile {
 						$work_node appendChild $node
 						set :stack [lappend :stack $node]
 					}
+					STATUS {
+						: -local attr status [lindex $line 1]
+					}
+					TYPE {
+						: -local attr type [lindex $line 1]
+					}
 					END {
-						puts "STACK IS ${:stack}"
 						set :stack [lreplace ${:stack} end end]
-
 					}
 				}
 			}
-		}
-		# puts "$line"		
-	} 
+		}		
+	}
+	
 	:private method add_key_val {key value} {
 		set work_node [lindex ${:stack} end]
 		set node [${:doc} createElement $key]
@@ -156,6 +157,11 @@ nx::Class create Mapfile {
 			$node setAttribute $attr $attr_val
 		}
 		$work_node appendChild $node
+	}
+	
+	:private method attr {attr val} {
+		set work_node [lindex ${:stack} end]
+		$work_node setAttribute $attr "$val"
 	}
 	
 	:public method "xml" {args} {
