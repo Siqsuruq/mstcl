@@ -27,7 +27,6 @@ nx::Class create Mapfile {
 
 		# Creating xmlMapFile in memory
 		dom createDocumentNode :doc
-		# set :root [${:doc} documentElement]
 	}
 
 	:public method "save" {} {
@@ -68,6 +67,33 @@ nx::Class create Mapfile {
 		}
 		return $stripped
 	}
+	
+	:public method "xml" {args} {
+		return [${:doc} asXML -xmlDeclaration 1 -encString UTF-8]
+	}
+	
+	:public method "list_layers" {args} {
+		if {[${:doc} hasChildNodes]} {
+			set layers_dict [dict create]
+			set count 1
+			set layers [${:doc} getElementsByTagName Layer]
+			foreach lay $layers {
+				set line [dict create]
+				set attrs [$lay attributeNames]
+				foreach attr $attrs {
+					dict append line $attr [$lay getAttribute $attr]
+				}
+				dict append layers_dict Layer$count $line
+				incr count
+			}
+			return $layers_dict
+		} else {
+			: -local parse
+			: -local list_layers
+		}
+	}
+	
+	# Private classes defenition
 	
 	:private method "parse_line" {line} {
 		set keywords [list MAP NAME END LAYER CLASS STYLE ANGLE SHAPEPATH DATA EXTENT SIZE IMAGETYPE IMAGECOLOR COLOR STATUS TYPE]
@@ -164,9 +190,7 @@ nx::Class create Mapfile {
 		$work_node setAttribute $attr "$val"
 	}
 	
-	:public method "xml" {args} {
-		return [${:doc} asXML -xmlDeclaration 1 -encString UTF-8]
-	}
+
 }
 
 Mapfile create map -name my_map.map -path ./
