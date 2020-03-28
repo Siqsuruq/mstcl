@@ -1,7 +1,7 @@
 package require nx
 package require tdom
 package require fileutil
-# package require chilkat
+
 
 
 nx::Class create Mapfile {
