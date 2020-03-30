@@ -4,10 +4,15 @@ package require fileutil
 
 nx::Class create Mapfile {
 	:property name:required
-	:property path:required
+	:property path
 	
 	:method init {} {
-		set :map_file [file join ${:path} ${:name}]
+		if {[info exists :path] != 0} {
+			set :map_file [file join ${:path} ${:name}]
+		} else {
+			set :path ./
+			set :map_file [file join ${:path} ${:name}]
+		}
 		set :tmp_mf [::fileutil::tempfile]
 		# Create 3 .xml files
 		set :xml_mapfile [::fileutil::tempfile]
@@ -196,4 +201,4 @@ nx::Class create Mapfile {
 	}
 }
 
-Mapfile create map -name map.map -path ./
+Mapfile create map -name map.map
