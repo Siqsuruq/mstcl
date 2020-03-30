@@ -13,6 +13,8 @@ nx::Class create Mapfile {
 			set :path ./
 			set :map_file [file join ${:path} ${:name}]
 		}
+		
+		set :keywds [dict create Map MAP name NAME end END Layer LAYER Class CLASS Style STYLE angle ANGLE shapePath SHAPEPATH data DATA extent EXTENT size SIZE imageType IMAGETYPE imageColor IMAGECOLOR color COLOR status STATUS type TYPE]
 		set :tmp_mf [::fileutil::tempfile]
 		# Create 3 .xml files
 		set :xml_mapfile [::fileutil::tempfile]
@@ -47,7 +49,7 @@ nx::Class create Mapfile {
 			set data [split $file_data "\n"]
 
 			foreach line $data {
-				: -local parse_line $line
+				: -local line $line
 			}
 			puts "--------------------------------------------------------"
 			puts [: -local xml]
@@ -76,6 +78,11 @@ nx::Class create Mapfile {
 	:public method "xml" {args} {
 		return [${:doc} asXML -xmlDeclaration 1 -encString UTF-8]
 	}
+
+	:public method "html" {args} {
+		return [${:doc} asHTML]
+	}
+	
 	
 	:public method "list_layers" {args} {
 		if {[${:doc} hasChildNodes]} {
@@ -105,8 +112,8 @@ nx::Class create Mapfile {
 
 	# Private classes defenition
 	
-	:public method "parse_line" {line} {
-		set keywords [list MAP NAME END LAYER CLASS STYLE ANGLE SHAPEPATH DATA EXTENT SIZE IMAGETYPE IMAGECOLOR COLOR STATUS TYPE]
+	:public method "line" {line} {
+		set keywords [dict values ${:keywds}]
 		foreach kw $keywords {
 			set a [lsearch -inline $line $kw*]
 			if {$a != ""} {
@@ -199,6 +206,40 @@ nx::Class create Mapfile {
 		set work_node [lindex ${:stack} end]
 		$work_node setAttribute $attr "$val"
 	}
+	
+	:public method "parse_xml" {} {
+		set root [${:doc} documentElement]
+		: -local explore $root
+	    close ${:tmpmap}
+		set fp [open ${:xml_mapfile} r]
+		set file_data [read $fp]
+		close $fp
+		puts $file_data
+		
+	}
+	
+	:private method "explore" {parent} {
+		set type [$parent nodeType]
+		set name [$parent nodeName]
+
+		puts "$parent is a $type node named $name"
+		
+		
+		if {$type eq "ELEMENT_NODE"} {
+			set :tmpmap [open ${:xml_mapfile} w+]
+			puts ${:tmpmap} [dict get ${:keywds} $name]	
+		}
+		
+		if {$type != "ELEMENT_NODE"} then return
+
+		if {[llength [$parent attributes]]} {
+			puts "attributes: [join [$parent attributes] ", "]"
+		}
+
+		foreach child [$parent childNodes] {
+			: -local explore $child
+		}
+	}
 }
 
-Mapfile create map -name map.map
+Mapfile create map -name my_map.map
