@@ -2,8 +2,6 @@ package require nx
 package require tdom
 package require fileutil
 
-
-
 nx::Class create Mapfile {
 	:property name:required
 	:property path:required
@@ -27,6 +25,9 @@ nx::Class create Mapfile {
 
 		# Creating xmlMapFile in memory
 		dom createDocumentNode :doc
+		
+		# Set up initial stack
+		set :stack ""
 	}
 
 	:public method "save" {} {
@@ -39,8 +40,7 @@ nx::Class create Mapfile {
 			set file_data [read $fp]
 			close $fp
 			set data [split $file_data "\n"]
-			# Set up initial stack
-			set :stack ""
+
 			foreach line $data {
 				: -local parse_line $line
 			}
@@ -93,15 +93,20 @@ nx::Class create Mapfile {
 		}
 	}
 	
+	:public method "print_stack" {args} {
+		puts "CURRENT STACK: ${:stack}"
+	}
+	
+
 	# Private classes defenition
 	
-	:private method "parse_line" {line} {
+	:public method "parse_line" {line} {
 		set keywords [list MAP NAME END LAYER CLASS STYLE ANGLE SHAPEPATH DATA EXTENT SIZE IMAGETYPE IMAGECOLOR COLOR STATUS TYPE]
 		foreach kw $keywords {
 			set a [lsearch -inline $line $kw*]
 			if {$a != ""} {
 
-				switch  $kw {
+				switch $kw {
 					MAP {
 						set node [${:doc} createElement Map]
 						${:doc} appendChild $node
@@ -169,15 +174,15 @@ nx::Class create Mapfile {
 		}		
 	}
 	
-	:private method add_key_val {key value} {
+	:private method "add_key_val" {key value} {
 		set work_node [lindex ${:stack} end]
 		set node [${:doc} createElement $key]
 		$node appendChild [${:doc} createTextNode $value]
 		$work_node appendChild $node
 	}
 	
-	:private method add_key_attr {key attrd} {
-			set work_node [lindex ${:stack} end]
+	:private method "add_key_attr" {key attrd} {
+		set work_node [lindex ${:stack} end]
 		set node [${:doc} createElement $key]
 		foreach attr [dict keys $attrd] attr_val [dict values $attrd] {
 			$node setAttribute $attr $attr_val
@@ -185,12 +190,10 @@ nx::Class create Mapfile {
 		$work_node appendChild $node
 	}
 	
-	:private method attr {attr val} {
+	:private method "attr" {attr val} {
 		set work_node [lindex ${:stack} end]
 		$work_node setAttribute $attr "$val"
 	}
-	
-
 }
 
-Mapfile create map -name my_map.map -path ./
+Mapfile create map -name map.map -path ./
