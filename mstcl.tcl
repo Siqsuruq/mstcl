@@ -15,19 +15,18 @@ nx::Class create Mapfile {
 		}
 		
 		set :keywds [dict create Map MAP name NAME end END Layer LAYER Class CLASS Style STYLE angle ANGLE shapePath SHAPEPATH data DATA extent EXTENT size SIZE imageType IMAGETYPE imageColor IMAGECOLOR color COLOR status STATUS type TYPE]
+		
 		set :tmp_mf [::fileutil::tempfile]
 		# Create 3 .xml files
-		set :xml_mapfile [::fileutil::tempfile]
-		set :xml_layerset [::fileutil::tempfile]
-		set :xml_symbolset [::fileutil::tempfile]
+		set :tmp_xml [::fileutil::tempfile]
 		
 		if {[file exists ${:map_file}] != 0} {
-			puts "EXISTS ${:tmp_mf}"
+			# puts "EXISTS ${:tmp_mf}"
 			set fp [open ${:tmp_mf} a+]
 			puts $fp [: -local strip_comments]
 			close $fp
 		} else {
-			puts "EMPTY ${:tmp_mf}"
+			# puts "EMPTY ${:tmp_mf}"
 		}
 
 		# Creating xmlMapFile in memory
@@ -209,35 +208,51 @@ nx::Class create Mapfile {
 	
 	:public method "parse_xml" {} {
 		set root [${:doc} documentElement]
-		: -local explore $root
-	    close ${:tmpmap}
-		set fp [open ${:xml_mapfile} r]
+		set :xml_stack [list]
+		set tmpxml [open ${:tmp_xml} a+]
+		: -local explore $root $tmpxml
+		close $tmpxml
+
+		set fp [open ${:tmp_xml} r]
 		set file_data [read $fp]
+
 		close $fp
 		puts $file_data
 		
 	}
 	
-	:private method "explore" {parent} {
+	:private method "explore" {parent tmpxml} {
+		set top_tags [list Map Layer Class Style]
 		set type [$parent nodeType]
 		set name [$parent nodeName]
+		set line ""
 
 		puts "$parent is a $type node named $name"
 		
 		
 		if {$type eq "ELEMENT_NODE"} {
-			set :tmpmap [open ${:xml_mapfile} w+]
-			puts ${:tmpmap} [dict get ${:keywds} $name]	
+			set a [lsearch -inline $top_tags $name]
+			if {$a ne ""} {
+				set line [lappend line [dict get ${:keywds} $name]]
+				set :xml_stack [lappend :xml_stack $parent]
+				puts "TAG $name NODE $parent"
+			} else {
+				set line [lappend line [dict get ${:keywds} $name]]
+				puts "\tTAG $name NODE $parent"
+			}
+		} elseif {$type eq "TEXT_NODE"} {
+			set line [lappend line [$parent nodeValue]]
 		}
 		
-		if {$type != "ELEMENT_NODE"} then return
+		# if {$type != "ELEMENT_NODE"} then return
 
 		if {[llength [$parent attributes]]} {
 			puts "attributes: [join [$parent attributes] ", "]"
 		}
-
+		
+		puts $tmpxml $line
 		foreach child [$parent childNodes] {
-			: -local explore $child
+			: -local explore $child $tmpxml
 		}
 	}
 }
