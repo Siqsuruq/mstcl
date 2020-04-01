@@ -209,6 +209,8 @@ nx::Class create Mapfile {
 	:public method "parse_xml" {} {
 		set root [${:doc} documentElement]
 		set :xml_stack [list]
+		set :line ""
+		
 		set tmpxml [open ${:tmp_xml} a+]
 		: -local explore $root $tmpxml
 		close $tmpxml
@@ -225,7 +227,6 @@ nx::Class create Mapfile {
 		set top_tags [list Map Layer Class Style]
 		set type [$parent nodeType]
 		set name [$parent nodeName]
-		set line ""
 
 		puts "$parent is a $type node named $name"
 		
@@ -233,15 +234,12 @@ nx::Class create Mapfile {
 		if {$type eq "ELEMENT_NODE"} {
 			set a [lsearch -inline $top_tags $name]
 			if {$a ne ""} {
-				set line [lappend line [dict get ${:keywds} $name]]
+				set ${:line} [lappend :line [dict get ${:keywds} $name]]
 				set :xml_stack [lappend :xml_stack $parent]
 				puts "TAG $name NODE $parent"
-			} else {
-				set line [lappend line [dict get ${:keywds} $name]]
-				puts "\tTAG $name NODE $parent"
 			}
 		} elseif {$type eq "TEXT_NODE"} {
-			set line [lappend line [$parent nodeValue]]
+			set ${:line} [lappend :line [$parent nodeValue]]
 		}
 		
 		# if {$type != "ELEMENT_NODE"} then return
@@ -250,7 +248,7 @@ nx::Class create Mapfile {
 			puts "attributes: [join [$parent attributes] ", "]"
 		}
 		
-		puts $tmpxml $line
+		puts $tmpxml ${:line}
 		foreach child [$parent childNodes] {
 			: -local explore $child $tmpxml
 		}
