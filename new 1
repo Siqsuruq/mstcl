@@ -1,0 +1,16 @@
+foreach a [lindex [$root asList] 2] {
+	set mapword [string toupper [lindex $a 0]]
+	puts "\t$mapword"
+	set attr [lindex $a 1]
+	set other [lindex $a 2]
+	if {$attr!=""} {
+		for {set x 0} {$x<[llength $attr]} {incr x 2} {
+			puts "\t\t[string toupper [lindex $attr $x]] [lindex $attr [expr $x+1]]"
+		}
+	}
+	if {$other!=""} {
+		foreach line $other {
+			puts "$line"
+		}
+	}
+}

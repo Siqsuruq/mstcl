@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Map>
+    <imageType>PNG</imageType>
+    <extent>-97.238976 41.619778 -82.122902 49.385620</extent>
+    <size x="400" y="300"/>
+    <shapePath>/ms4w/apps/tutorial/data</shapePath>
+    <imageColor red="255" green="255" blue="255"/>
+    <angle>50</angle>
+    <Layer name="states_poly" status="OFF" type="POLYGON">
+        <data>states_ugl</data>
+        <Class name="States">
+            <Style>
+                <color red="232" green="232" blue="232"/>
+            </Style>
+        </Class>
+    </Layer>
+    <Layer name="states_line" status="ON" type="LINE">
+        <data>states_ugl</data>
+        <Class name="State Boundary">
+            <Style>
+                <color red="32" green="32" blue="32"/>
+            </Style>
+        </Class>
+    </Layer>
+</Map>

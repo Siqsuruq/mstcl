@@ -212,7 +212,8 @@ nx::Class create Mapfile {
 		set :line ""
 		
 		set tmpxml [open ${:tmp_xml} a+]
-		: -local explore $root $tmpxml
+		# : -local explore $root $tmpxml
+		: -local expl [${:root} asList]
 		close $tmpxml
 
 		set fp [open ${:tmp_xml} r]
@@ -222,6 +223,13 @@ nx::Class create Mapfile {
 		puts $file_data
 		
 	}
+	
+	:private method "expl" {a} {
+		foreach e $ {
+			puts $e
+		}
+	}
+	
 	
 	:private method "explore" {parent tmpxml} {
 		set top_tags [list Map Layer Class Style]
@@ -239,7 +247,7 @@ nx::Class create Mapfile {
 				puts "TAG $name NODE $parent"
 			}
 		} elseif {$type eq "TEXT_NODE"} {
-			set ${:line} [lappend :line [$parent nodeValue]]
+			set ${:line} [lappend :line "[$parent nodeValue]\n"]
 		}
 		
 		# if {$type != "ELEMENT_NODE"} then return
