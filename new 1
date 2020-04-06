@@ -1,16 +1,70 @@
-foreach a [lindex [$root asList] 2] {
+package require tdom
+set fp [read [open mapfile-test.xml r]]
+dom parse $fp doc
+set root [$doc documentElement]
+set key_words [list LEGEND OUTPUTFORMAT PROJECTION LABEL]
+set lvl 1
+
+
+proc attribute {mapword attr {indent \t}} {
+	set indent ""
+	for {set x 1} {$x <= $::lvl} {incr x} {
+		set indent [join [list $indent \t] ""]
+	}
+	if {$mapword eq "IMAGECOLOR" || $mapword eq "OUTLINECOLOR"} {
+		for {set x 0} {$x<[llength $attr]} {incr x 2} {
+			puts -nonewline " [lindex $attr [expr $x+1]]"
+		}
+	} elseif {$mapword eq "SIZE" || $mapword eq "KEYSIZE" || $mapword eq "KEYSPACING"} {
+		for {set x 0} {$x<[llength $attr]} {incr x 2} {
+			puts -nonewline " [lindex $attr [expr $x+1]]"
+		}
+	} else {
+		for {set x 0} {$x<[llength $attr]} {incr x 2} {
+			puts -nonewline "\n$indent [string toupper [lindex $attr $x]] [lindex $attr [expr $x+1]]"
+		}
+	}
+	set ::lvl [incr $::lvl -1]
+}
+
+
+proc parse_line {a} {
+	set indent ""
+	for {set x 1} {$x <= $::lvl} {incr x} {
+		set indent [join [list $indent \t] ""]
+	}
 	set mapword [string toupper [lindex $a 0]]
-	puts "\t$mapword"
+	puts -nonewline "\n$indent$mapword"
 	set attr [lindex $a 1]
 	set other [lindex $a 2]
 	if {$attr!=""} {
-		for {set x 0} {$x<[llength $attr]} {incr x 2} {
-			puts "\t\t[string toupper [lindex $attr $x]] [lindex $attr [expr $x+1]]"
-		}
+		set ::lvl [incr $::lvl]
+		attribute $mapword $attr $indent
 	}
 	if {$other!=""} {
 		foreach line $other {
-			puts "$line"
+			if {[lindex $line 0] eq "#text"} {
+				set string [lindex $line 1]
+				puts -nonewline " \"$string\""
+			} else {
+				if {$mapword eq "LEGEND"} {
+					foreach otl $other {
+						parse_line $otl
+					}
+				}
+			}
 		}
 	}
+	
+	set a [lsearch -inline $::key_words $mapword]
+	if {$a != ""} {
+		puts -nonewline "\n$indent END"
+		set ::lvl [incr $::lvl -1]
+	}
+
 }
+
+foreach a [lindex [$root asList] 2] {
+	parse_line $a
+}
+
