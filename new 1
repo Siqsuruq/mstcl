@@ -3,14 +3,17 @@ set fp [read [open mapfile-test.xml r]]
 dom parse $fp doc
 set root [$doc documentElement]
 set key_words [list LEGEND OUTPUTFORMAT PROJECTION LABEL]
-set lvl 1
 
+set ::lvl \t
 
-proc attribute {mapword attr {indent \t}} {
-	set indent ""
-	for {set x 1} {$x <= $::lvl} {incr x} {
-		set indent [join [list $indent \t] ""]
-	}
+proc incrlvl {} {
+	set ::lvl $::lvl\t
+}
+proc decrlvl {} {
+	set ::lvl [string range $::lvl 0 end-1]
+}
+
+proc attribute {mapword attr} {
 	if {$mapword eq "IMAGECOLOR" || $mapword eq "OUTLINECOLOR"} {
 		for {set x 0} {$x<[llength $attr]} {incr x 2} {
 			puts -nonewline " [lindex $attr [expr $x+1]]"
@@ -21,25 +24,19 @@ proc attribute {mapword attr {indent \t}} {
 		}
 	} else {
 		for {set x 0} {$x<[llength $attr]} {incr x 2} {
-			puts -nonewline "\n$indent [string toupper [lindex $attr $x]] [lindex $attr [expr $x+1]]"
+			puts -nonewline "\n$::lvl[string toupper [lindex $attr $x]] [lindex $attr [expr $x+1]]"
 		}
 	}
-	set ::lvl [incr $::lvl -1]
 }
 
 
 proc parse_line {a} {
-	set indent ""
-	for {set x 1} {$x <= $::lvl} {incr x} {
-		set indent [join [list $indent \t] ""]
-	}
 	set mapword [string toupper [lindex $a 0]]
-	puts -nonewline "\n$indent$mapword"
+	puts -nonewline "\n$::lvl$mapword"
 	set attr [lindex $a 1]
 	set other [lindex $a 2]
 	if {$attr!=""} {
-		set ::lvl [incr $::lvl]
-		attribute $mapword $attr $indent
+		attribute $mapword $attr
 	}
 	if {$other!=""} {
 		foreach line $other {
@@ -51,6 +48,7 @@ proc parse_line {a} {
 					foreach otl $other {
 						parse_line $otl
 					}
+					puts -nonewline "\n$::lvl END"
 				}
 			}
 		}
@@ -58,8 +56,7 @@ proc parse_line {a} {
 	
 	set a [lsearch -inline $::key_words $mapword]
 	if {$a != ""} {
-		puts -nonewline "\n$indent END"
-		set ::lvl [incr $::lvl -1]
+		puts -nonewline "\n$::lvl END"
 	}
 
 }
