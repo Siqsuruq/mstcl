@@ -1,4 +1,5 @@
-set key_words [list LEGEND OUTPUTFORMAT PROJECTION LABEL]
+set key_words [list MAP LEGEND OUTPUTFORMAT PROJECTION LABEL]
+set xml_ignore_wrd [list HMSTART CONFIG]
 set indent "\t"
 
 
@@ -11,23 +12,29 @@ proc dec_indent {} {
 }
 
 
-proc attribute {mapword attr} {
+proc attribute {mapword attr val} {
 	set prop [string map {= { }} $attr]
-	
-	if {$mapword eq "IMAGECOLOR" || $mapword eq "OUTLINECOLOR"} {
+	if {$mapword eq "MAP"} {
+		set wrd "MAP"
+		puts "$wrd"
+		if {[dict exists $prop status]} {
+			set wrd "STATUS"
+			puts "$::indent$wrd [dict get $prop status]"
+		} 
+		if {[dict exists $prop name]} {
+			set wrd "NAME"
+			puts "$::indent$wrd \"[dict get $prop name]\""
+		}
+		
+	} elseif {$mapword eq "IMAGECOLOR" || $mapword eq "OUTLINECOLOR" || $mapword eq "SIZE" || $mapword eq "KEYSIZE" || $mapword eq "KEYSPACING" || $mapword eq "BACKGROUNDCOLOR" || $mapword eq "BACKGROUNDSHADOWCOLOR" || $mapword eq "BACKGROUNDSHADOWSIZE" || $mapword eq "POINT" || $mapword eq "OFFSET" || $mapword eq "SHADOWCOLOR" || $mapword eq "SHADOWSIZE" || $mapword eq "COLOR"} {
 		puts "$::indent$mapword [dict values $prop]"
+	} elseif {$mapword eq "ITEM"} {
+		set wrd CONFIG
+		puts "$::indent$wrd \"[dict get $prop name]\" \"$val\""
 	} else {
 		puts "\t------------ MAPWORD: \"$mapword\" \"$prop\""
 	}
-	# elseif {$mapword eq "SIZE" || $mapword eq "KEYSIZE" || $mapword eq "KEYSPACING"} {
-		# for {set x 0} {$x<[llength $attr]} {incr x 2} {
-			# puts -nonewline " [lindex $attr [expr $x+1]]"
-		# }
-	# } else {
-		# for {set x 0} {$x<[llength $attr]} {incr x 2} {
-			# puts -nonewline "\n$::indent [string toupper [lindex $attr $x]] [lindex $attr [expr $x+1]]"
-		# }
-	# }
+
 }
 
 
@@ -36,25 +43,27 @@ proc a {args} {
 	set attr [lindex $args 2]
 	set val [lindex $args 3]
 	set a [lsearch -inline $::key_words $mapword]
-	
-	if {[lindex $args 1] ne "/" && $a ne ""} {
-		incr_indent
-		if {$attr ne ""} {
-			attribute $mapword $attr
-		} else {puts "$::indent$mapword $val"}
-	} elseif {[lindex $args 1] eq "/" && $a ne ""} {
-		set end "END"
-		puts "$::indent$end ------------------> $a"
-		dec_indent
-	} elseif {[lindex $args 1] ne "/" && $a eq ""} {
+
+	# Check ignore words
+	if {[lsearch -inline $::xml_ignore_wrd $mapword] eq ""} {
+		if {[lindex $args 1] ne "/" && $a ne ""} {
+			incr_indent
 			if {$attr ne ""} {
-				attribute $mapword $attr
+				attribute $mapword $attr $val
 			} else {puts "$::indent$mapword $val"}
-			# puts "$::indent$mapword $attr $val"
-	} elseif {[lindex $args 1] eq "/" && $a eq ""} {
-			# puts "$::indent$mapword "
+		} elseif {[lindex $args 1] eq "/" && $a ne ""} {
+			set end "END"
+			puts "$::indent$end ------------------> $a"
+			dec_indent
+		} elseif {[lindex $args 1] ne "/" && $a eq ""} {
+				if {$attr ne ""} {
+					attribute $mapword $attr $val
+				} else {puts "$::indent$mapword $val"}
+				# puts "$::indent$mapword $attr $val"
+		} elseif {[lindex $args 1] eq "/" && $a eq ""} {
+				# puts "$::indent$mapword "
+		}
 	}
-		
 }
 
 

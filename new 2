@@ -16,8 +16,8 @@ nx::Class create Mapfile {
 		
 		set :keywds [dict create Map MAP name NAME end END Layer LAYER Class CLASS Style STYLE angle ANGLE shapePath SHAPEPATH data DATA extent EXTENT size SIZE imageType IMAGETYPE imageColor IMAGECOLOR color COLOR status STATUS type TYPE]
 		
+		# Temporary files
 		set :tmp_mf [::fileutil::tempfile]
-		# Create 3 .xml files
 		set :tmp_xml [::fileutil::tempfile]
 		
 		if {[file exists ${:map_file}] != 0} {
@@ -75,15 +75,6 @@ nx::Class create Mapfile {
 		}
 		return $stripped
 	}
-	
-	:public method "xml" {args} {
-		return [${:doc} asXML -xmlDeclaration 1 -encString UTF-8]
-	}
-
-	:public method "html" {args} {
-		return [${:doc} asHTML]
-	}
-	
 	
 	:public method "list_layers" {args} {
 		if {[${:doc} hasChildNodes]} {
@@ -208,61 +199,23 @@ nx::Class create Mapfile {
 		$work_node setAttribute $attr "$val"
 	}
 	
-	:public method "parse_xml" {} {
-		set root [${:doc} documentElement]
-		set :xml_stack [list]
-		set :line ""
-		
-		set tmpxml [open ${:tmp_xml} a+]
-		# : -local explore $root $tmpxml
-		: -local expl [${:root} asList]
-		close $tmpxml
 
-		set fp [open ${:tmp_xml} r]
-		set file_data [read $fp]
-
-		close $fp
-		puts $file_data
-		
+	:public method map2xml {} {
+	
 	}
 	
-	:private method "expl" {a} {
-		foreach e $ {
-			puts $e
-		}
+	:public method xml2map {} {
+	
 	}
 	
-	
-	:private method "explore" {parent tmpxml} {
-		set top_tags [list Map Layer Class Style]
-		set type [$parent nodeType]
-		set name [$parent nodeName]
-
-		puts "$parent is a $type node named $name"
-		
-		
-		if {$type eq "ELEMENT_NODE"} {
-			set a [lsearch -inline $top_tags $name]
-			if {$a ne ""} {
-				set ${:line} [lappend :line [dict get ${:keywds} $name]]
-				set :xml_stack [lappend :xml_stack $parent]
-				puts "TAG $name NODE $parent"
-			}
-		} elseif {$type eq "TEXT_NODE"} {
-			set ${:line} [lappend :line "[$parent nodeValue]\n"]
-		}
-		
-		# if {$type != "ELEMENT_NODE"} then return
-
-		if {[llength [$parent attributes]]} {
-			puts "attributes: [join [$parent attributes] ", "]"
-		}
-		
-		puts $tmpxml ${:line}
-		foreach child [$parent childNodes] {
-			: -local explore $child $tmpxml
-		}
+	:public method "xml" {args} {
+		return [${:doc} asXML -xmlDeclaration 1 -encString UTF-8]
 	}
+
+	:public method "html" {args} {
+		return [${:doc} asHTML]
+	}	
+
 }
 
 Mapfile create map -name my_map.map
