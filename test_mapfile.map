@@ -5,7 +5,7 @@ MAP
   IMAGETYPE "png24"
   NAME "MS"
   RESOLUTION 96
-  SHAPEPATH ""
+  SHAPEPATH "./"
   SIZE 843 607
   STATUS ON
   SYMBOLSET "C:\\Program Files (x86)\\MapManager\\templates\\symbols.sym"

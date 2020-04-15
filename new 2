@@ -14,7 +14,9 @@ nx::Class create Mapfile {
 			set :map_file [file join ${:path} ${:name}]
 		}
 		
-		set :keywds [dict create Map MAP name NAME end END Layer LAYER Class CLASS Style STYLE angle ANGLE shapePath SHAPEPATH data DATA extent EXTENT size SIZE imageType IMAGETYPE imageColor IMAGECOLOR color COLOR status STATUS type TYPE]
+		set :keywds [dict create Map MAP name NAME end END Layer LAYER Class CLASS Style STYLE angle ANGLE shapePath SHAPEPATH data DATA extent EXTENT size SIZE imageType IMAGETYPE imageColor IMAGECOLOR color COLOR status STATUS\
+		type TYPE OutputFormat OUTPUTFORMAT mimeType MIMETYPE driver DRIVER extension EXTENSION imageMode IMAGEMODE transparent TRANSPARENT resolution RESOLUTION defResolution DEFRESOLUTION fontSet FONTSET symbolSet SYMBOLSET\
+		units UNITS projection PROJECTION Legend LEGEND keySize KEYSIZE keySpacing KEYSPACING Label LABEL offset OFFSET shadowSize SHADOWSIZE QueryMap QUERYMAP]
 		
 		# Temporary files
 		set :tmp_mf [::fileutil::tempfile]
@@ -40,7 +42,7 @@ nx::Class create Mapfile {
 		puts "Saving file to: [file join ${:path} ${:name}]"
 	}
 	
-	:public method "parse" {} {
+	:public method "map2xml" {} {
 		if {[file exists ${:tmp_mf}] != 0} {
 			set fp [open "${:tmp_mf}" r]
 			set file_data [read $fp]
@@ -92,7 +94,7 @@ nx::Class create Mapfile {
 			}
 			return $layers_dict
 		} else {
-			: -local parse
+			: -local map2xml
 			: -local list_layers
 		}
 	}
@@ -106,76 +108,49 @@ nx::Class create Mapfile {
 	
 	:public method "line" {line} {
 		set keywords [dict values ${:keywds}]
-		foreach kw $keywords {
-			set a [lsearch -inline $line $kw*]
-			if {$a != ""} {
-
-				switch $kw {
-					MAP {
-						set node [${:doc} createElement Map]
-						${:doc} appendChild $node
-						set :stack [lappend :stack $node]
+		set kw ""
+		foreach key $keywords {
+			if {[lsearch -inline $line $key*] != ""} {
+				set kw $key
+			}
+		}
+			if {$kw != ""} {
+				if {$kw eq "MAP"} {
+					set node [${:doc} createElement Map]
+					${:doc} appendChild $node
+					set :stack [lappend :stack $node]
+				} elseif {$kw eq "NAME" || $kw eq "STATUS" || $kw eq "TYPE"} {
+					: -local attr [string tolower $kw] [lindex $line 1]
+				} elseif {$kw eq "LAYER" || $kw eq "STYLE" || $kw eq "CLASS" || $kw eq "OUTPUTFORMAT" || $kw eq "PROJECTION" || $kw eq "LEGEND" || $kw eq "LABEL" || $kw eq "QUERYMAP"} { ; #NODES WITH END
+					set work_node [lindex ${:stack} end]
+					set node [${:doc} createElement [string tolower $kw 1 end]]
+					$work_node appendChild $node
+					set :stack [lappend :stack $node]
+				} elseif {$kw eq "DATA" || $kw eq "EXTENT" || $kw eq "ANGLE" || $kw eq "IMAGETYPE" || $kw eq "SHAPEPATH"} {
+					: -local add_key_val [string tolower $kw] [lrange $line 1 end]
+				} elseif {$kw eq "SIZE" || $kw eq "KEYSIZE" || $kw eq "KEYSPACING" || $kw eq "OFFSET" || $kw eq "SHADOWSIZE"} { ;# VALUES WITH 2 ATTR
+					set vals [lrange $line 1 end]
+					if {[llength $vals] == 2} {
+						: -local add_key_attr [string tolower $kw] [dict create x [lindex $vals 0] y [lindex $vals 1]]
+					} else {
+						: -local add_key_val [string tolower $kw] [lrange $line 1 end]
 					}
-					NAME {
-						: -local attr name [lindex $line 1]
-					}
-					LAYER {
-						set work_node [lindex ${:stack} end]
-						set node [${:doc} createElement Layer]
-						$work_node appendChild $node
-						set :stack [lappend :stack $node]
-					}
-					DATA {
-						: -local add_key_val data [lindex $line 1]
-					}
-					EXTENT {
-						: -local add_key_val extent [lrange $line 1 end]
-					}
-					ANGLE {
-						: -local add_key_val angle [lindex $line 1]
-					}
-					SIZE {
-						set vals [lrange $line 1 end]
-						: -local add_key_attr size [dict create x [lindex $vals 0] y [lindex $vals 1]]
-					}
-					IMAGETYPE {
-						: -local add_key_val imageType [lindex $line 1]
-					}
-					IMAGECOLOR {
-						set vals [lrange $line 1 end]
-						: -local add_key_attr imageColor [dict create red [lindex $vals 0] green [lindex $vals 1] blue [lindex $vals 2]]
-					}
-					COLOR {
-						set vals [lrange $line 1 end]
-						: -local add_key_attr color [dict create red [lindex $vals 0] green [lindex $vals 1] blue [lindex $vals 2]]
-					}
-					SHAPEPATH {
-						: -local add_key_val shapePath [lindex $line 1]
-					}
-					STYLE {
-						set work_node [lindex ${:stack} end]
-						set node [${:doc} createElement Style]
-						$work_node appendChild $node
-						set :stack [lappend :stack $node]
-					}
-					CLASS {
-						set work_node [lindex ${:stack} end]
-						set node [${:doc} createElement Class]
-						$work_node appendChild $node
-						set :stack [lappend :stack $node]
-					}
-					STATUS {
-						: -local attr status [lindex $line 1]
-					}
-					TYPE {
-						: -local attr type [lindex $line 1]
-					}
-					END {
-						set :stack [lreplace ${:stack} end end]
-					}
+				} elseif {$kw eq "IMAGECOLOR" || $kw eq "COLOR"} { ;# COLOR RELATED VALUES WITH # ATTR
+					set vals [lrange $line 1 end]
+					: -local add_key_attr [string tolower $kw] [dict create red [lindex $vals 0] green [lindex $vals 1] blue [lindex $vals 2]]
+				} elseif {$kw eq "END"} {
+					set :stack [lreplace ${:stack} end end]
+				} else {
+					: -local add_key_val [string tolower $kw] [lrange $line 1 end]
+				}
+			} else {
+				set work_node [lindex ${:stack} end]
+				if {[$work_node nodeName] eq "Projection"} {
+					set data "\n\t[lindex $line 0]\n"
+					set tnode [${:doc} createTextNode $data]
+					$work_node appendChild $tnode
 				}
 			}
-		}		
 	}
 	
 	:private method "add_key_val" {key value} {
@@ -199,10 +174,24 @@ nx::Class create Mapfile {
 		$work_node setAttribute $attr "$val"
 	}
 	
-
-	:public method map2xml {} {
-	
+	:public method getTag {tag} {
+		set result ""
+		set nodes [${:doc} getElementsByTagName $tag]
+		foreach node $nodes {
+			# puts "$node --> [$node data]"
+			# set children [$node childNodes]
+			# puts "Children: [llength $children]"
+			# if {[$child nodeType] eq "TEXT_NODE"} {
+				# lappend result [$child nodeValue]
+			# }
+			lappend result [$node asList]
+		}
+		return $result
 	}
+
+	# :public method map2xml {} {
+	
+	# }
 	
 	:public method xml2map {} {
 	
@@ -218,4 +207,4 @@ nx::Class create Mapfile {
 
 }
 
-Mapfile create map -name my_map.map
+Mapfile create map -name ./test_mapfile.map
