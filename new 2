@@ -19,28 +19,29 @@ nx::Class create Mapfile {
 		units UNITS projection PROJECTION Legend LEGEND keySize KEYSIZE keySpacing KEYSPACING Label LABEL offset OFFSET shadowSize SHADOWSIZE QueryMap QUERYMAP ScaleBar SCALEBAR intervals INTERVALS Web WEB Metadata METADATA\
 		outlineColor OUTLINECOLOR template TEMPLATE]
 		
-		# Temporary files
+		# Get file extension, create working copy (temporary file), empty dom in memory, initial stack
+		set fext [file extension ${:map_file}]
+		dom createDocumentNode :doc
+		set :stack ""
 		set :tmp_mf [::fileutil::tempfile]
-		set :tmp_xml [::fileutil::tempfile]
-		
-		if {[file exists ${:map_file}] != 0} {
-			# puts "EXISTS ${:tmp_mf}"
+
+		# File exists and has .map extention
+		if {[file exists ${:map_file}] != 0 || $fext eq ".map"} {
 			set fp [open ${:tmp_mf} a+]
-			puts $fp [: -local strip_comments]
+			puts $fp [: -local strip_comments] ;# Remove coments from .map file and write it to temp file tmp_mf
 			close $fp
+			: -local map2xml
 		} else {
 			# puts "EMPTY ${:tmp_mf}"
 		}
-
-		# Creating xmlMapFile in memory
-		dom createDocumentNode :doc
-		
-		# Set up initial stack
-		set :stack ""
 	}
 
-	:public method "save" {} {
-		puts "Saving file to: [file join ${:path} ${:name}]"
+	:public method "save" {ftype fname} {
+		if {$ftype eq "xml"} {
+			puts "Saving file to: [file join ${:path} ${:name}]"
+		} elseif {$ftype eq "map"} {
+			puts "Saving file to: [file join ${:path} ${:name}]"
+		}
 	}
 	
 	:public method "map2xml" {} {
@@ -49,15 +50,12 @@ nx::Class create Mapfile {
 			set file_data [read $fp]
 			close $fp
 			set data [split $file_data "\n"]
-
 			foreach line $data {
 				if {$line ne ""} {
 					: -local line $line
 				}
 			}
-		} else {
-			return "File doesnt exists."
-		}
+		} else {return "File doesnt exists."}
 	}
 	
 	:public method "strip_comments" {} {
@@ -216,4 +214,4 @@ nx::Class create Mapfile {
 
 }
 
-Mapfile create map -name ./example_data/test_mapfile.map
+Mapfile create map -name ./test_data/test_mapfile.map
