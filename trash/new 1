@@ -1,5 +1,5 @@
 package require tdom
-set fp [read [open mapfile-test.xml r]]
+set fp [read [open ./test_data/mapfile_full.xml r]]
 dom parse $fp doc
 set root [$doc documentElement]
 set key_words [list LEGEND OUTPUTFORMAT PROJECTION LABEL]

@@ -1,7 +1,7 @@
 package require chilkat
 
 set xml [new_CkXml]
-CkXml_LoadXmlFile $xml "mapfile-test.xml"
+CkXml_LoadXmlFile $xml "./test_data/mapfile_full.xml"
 
 proc root_childs {xml} {
 	for {set i 0} {$i <= [expr [CkXml_get_NumChildren $xml] - 1]} {incr i} {

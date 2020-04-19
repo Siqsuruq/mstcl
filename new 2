@@ -16,7 +16,8 @@ nx::Class create Mapfile {
 		
 		set :keywds [dict create Map MAP name NAME end END Layer LAYER Class CLASS Style STYLE angle ANGLE shapePath SHAPEPATH data DATA extent EXTENT size SIZE imageType IMAGETYPE imageColor IMAGECOLOR color COLOR status STATUS\
 		type TYPE OutputFormat OUTPUTFORMAT mimeType MIMETYPE driver DRIVER extension EXTENSION imageMode IMAGEMODE transparent TRANSPARENT resolution RESOLUTION defResolution DEFRESOLUTION fontSet FONTSET symbolSet SYMBOLSET\
-		units UNITS projection PROJECTION Legend LEGEND keySize KEYSIZE keySpacing KEYSPACING Label LABEL offset OFFSET shadowSize SHADOWSIZE QueryMap QUERYMAP]
+		units UNITS projection PROJECTION Legend LEGEND keySize KEYSIZE keySpacing KEYSPACING Label LABEL offset OFFSET shadowSize SHADOWSIZE QueryMap QUERYMAP ScaleBar SCALEBAR intervals INTERVALS Web WEB Metadata METADATA\
+		outlineColor OUTLINECOLOR template TEMPLATE]
 		
 		# Temporary files
 		set :tmp_mf [::fileutil::tempfile]
@@ -50,12 +51,10 @@ nx::Class create Mapfile {
 			set data [split $file_data "\n"]
 
 			foreach line $data {
-				puts "PARSING LINE: $line"
-				: -local line $line
-				: -local xml
+				if {$line ne ""} {
+					: -local line $line
+				}
 			}
-			puts "--------------------------------------------------------"
-			puts [: -local xml]
 		} else {
 			return "File doesnt exists."
 		}
@@ -121,27 +120,37 @@ nx::Class create Mapfile {
 					set :stack [lappend :stack $node]
 				} elseif {$kw eq "NAME" || $kw eq "STATUS" || $kw eq "TYPE"} {
 					: -local attr [string tolower $kw] [lindex $line 1]
-				} elseif {$kw eq "LAYER" || $kw eq "STYLE" || $kw eq "CLASS" || $kw eq "OUTPUTFORMAT" || $kw eq "PROJECTION" || $kw eq "LEGEND" || $kw eq "LABEL" || $kw eq "QUERYMAP"} { ; #NODES WITH END
+				} elseif {$kw eq "LAYER" || $kw eq "CLASS" || $kw eq "OUTPUTFORMAT" || $kw eq "PROJECTION" || $kw eq "LEGEND" || $kw eq "LABEL" || $kw eq "QUERYMAP" || $kw eq "SCALEBAR" || $kw eq "WEB" || $kw eq "METADATA"} { ; #NODES WITH END
 					set work_node [lindex ${:stack} end]
 					set node [${:doc} createElement [string tolower $kw 1 end]]
 					$work_node appendChild $node
 					set :stack [lappend :stack $node]
+				} elseif {$kw eq "STYLE"} {
+					set style_data [lindex $line 1]
+					if {$style_data eq ""} {
+						set work_node [lindex ${:stack} end]
+						set node [${:doc} createElement [string tolower $kw 1 end]]
+						$work_node appendChild $node
+						set :stack [lappend :stack $node]
+					} else {
+						: -local add_key_val [string tolower $kw] $style_data
+					}
 				} elseif {$kw eq "DATA" || $kw eq "EXTENT" || $kw eq "ANGLE" || $kw eq "IMAGETYPE" || $kw eq "SHAPEPATH"} {
 					: -local add_key_val [string tolower $kw] [lrange $line 1 end]
-				} elseif {$kw eq "SIZE" || $kw eq "KEYSIZE" || $kw eq "KEYSPACING" || $kw eq "OFFSET" || $kw eq "SHADOWSIZE"} { ;# VALUES WITH 2 ATTR
+				} elseif {$kw eq "SIZE" || $kw eq "KEYSIZE" || $kw eq "KEYSPACING" || $kw eq "OFFSET" || $kw eq "SHADOWSIZE" || $kw eq "INTERVALS"} { ;# VALUES WITH 2 ATTR
 					set vals [lrange $line 1 end]
 					if {[llength $vals] == 2} {
 						: -local add_key_attr [string tolower $kw] [dict create x [lindex $vals 0] y [lindex $vals 1]]
 					} else {
 						: -local add_key_val [string tolower $kw] [lrange $line 1 end]
 					}
-				} elseif {$kw eq "IMAGECOLOR" || $kw eq "COLOR"} { ;# COLOR RELATED VALUES WITH # ATTR
+				} elseif {$kw eq "IMAGECOLOR" || $kw eq "COLOR" || $kw eq "OUTLINECOLOR" } { ;# COLOR RELATED VALUES WITH # ATTR
 					set vals [lrange $line 1 end]
 					: -local add_key_attr [string tolower $kw] [dict create red [lindex $vals 0] green [lindex $vals 1] blue [lindex $vals 2]]
 				} elseif {$kw eq "END"} {
 					set :stack [lreplace ${:stack} end end]
 				} else {
-					: -local add_key_val [string tolower $kw] [lrange $line 1 end]
+					: -local add_key_val [string tolower $kw] [lindex [lrange $line 1 end] 0]
 				}
 			} else {
 				set work_node [lindex ${:stack} end]
@@ -174,7 +183,7 @@ nx::Class create Mapfile {
 		$work_node setAttribute $attr "$val"
 	}
 	
-	:public method getTag {tag} {
+	:public method get {tag} {
 		set result ""
 		set nodes [${:doc} getElementsByTagName $tag]
 		foreach node $nodes {
@@ -189,22 +198,22 @@ nx::Class create Mapfile {
 		return $result
 	}
 
-	# :public method map2xml {} {
-	
-	# }
-	
 	:public method xml2map {} {
 	
 	}
 	
-	:public method "xml" {args} {
-		return [${:doc} asXML -xmlDeclaration 1 -encString UTF-8]
+	:public method as {{type xml}} {
+		if {$type eq "xml"} {
+			return [${:doc} asXML -xmlDeclaration 1 -encString UTF-8]
+		} elseif {$type eq "html"} {
+			return [${:doc} asHTML]
+		} elseif {$type eq "text"} {
+			return [${:doc} asText]
+		} elseif {$type eq "json"} {
+			return [${:doc} asJSON -indent 1]
+		}
 	}
-
-	:public method "html" {args} {
-		return [${:doc} asHTML]
-	}	
 
 }
 
-Mapfile create map -name ./test_mapfile.map
+Mapfile create map -name ./example_data/test_mapfile.map

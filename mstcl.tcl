@@ -265,4 +265,4 @@ nx::Class create Mapfile {
 	}
 }
 
-Mapfile create map -name my_map.map
+Mapfile create map -name ./example_data/test_mapfile.map

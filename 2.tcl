@@ -67,7 +67,7 @@ proc a {args} {
 }
 
 
-set xml_file "./mapfile-test.xml"
+set xml_file "./test_data/mapfile_full.xml"
 set doc [dom parse [tdom::xmlReadFile $xml_file]]
 set hd "[$doc asHTML]"
 ::htmlparse::parse -cmd [list a] $hd
