@@ -1,6 +1,7 @@
 package require nx
 package require tdom
 package require fileutil
+package require htmlparse
 
 nx::Class create Mapfile {
 	:property name:required
@@ -31,33 +32,12 @@ nx::Class create Mapfile {
 			puts $fp [: -local strip_comments] ;# Remove coments from .map file and write it to temp file tmp_mf
 			close $fp
 			: -local map2xml
-		} else {
-			# puts "EMPTY ${:tmp_mf}"
+		} elseif {[file exists ${:map_file}] != 0 || $fext eq ".xml"} {
+			puts "File is XML"
 		}
 	}
 
-	:public method "save" {ftype fname} {
-		if {$ftype eq "xml"} {
-			puts "Saving file to: [file join ${:path} ${:name}]"
-		} elseif {$ftype eq "map"} {
-			puts "Saving file to: [file join ${:path} ${:name}]"
-		}
-	}
-	
-	:public method "map2xml" {} {
-		if {[file exists ${:tmp_mf}] != 0} {
-			set fp [open "${:tmp_mf}" r]
-			set file_data [read $fp]
-			close $fp
-			set data [split $file_data "\n"]
-			foreach line $data {
-				if {$line ne ""} {
-					: -local line $line
-				}
-			}
-		} else {return "File doesnt exists."}
-	}
-	
+###########      USEFULL METHODS     ###########
 	:public method "strip_comments" {} {
 		set commentChars "#"
 		set stripped ""
@@ -74,7 +54,34 @@ nx::Class create Mapfile {
 		}
 		return $stripped
 	}
+
+	:public method "print_stack" {args} {
+		puts "CURRENT STACK: ${:stack}"
+	}
 	
+
+########### SAVE AND EXPORT RELATED ###########
+	:public method "as" {{type xml}} {
+		if {$type eq "xml"} {
+			return [${:doc} asXML -xmlDeclaration 1 -encString UTF-8]
+		} elseif {$type eq "html"} {
+			return [${:doc} asHTML]
+		} elseif {$type eq "text"} {
+			return [${:doc} asText]
+		} elseif {$type eq "json"} {
+			return [${:doc} asJSON -indent 1]
+		}
+	}
+	
+	:public method "save" {ftype fname} {
+		if {$ftype eq "xml"} {
+			puts "Saving file to: [file join ${:path} ${:name}]"
+		} elseif {$ftype eq "map"} {
+			puts "Saving file to: [file join ${:path} ${:name}]"
+		}
+	}
+
+#############     GET   #############
 	:public method "list_layers" {args} {
 		if {[${:doc} hasChildNodes]} {
 			set layers_dict [dict create]
@@ -95,14 +102,42 @@ nx::Class create Mapfile {
 			: -local list_layers
 		}
 	}
-	
-	:public method "print_stack" {args} {
-		puts "CURRENT STACK: ${:stack}"
-	}
-	
 
-	# Private classes defenition
-	
+
+
+
+
+
+
+	:public method get {tag} {
+		set result ""
+		set nodes [${:doc} getElementsByTagName $tag]
+		foreach node $nodes {
+			# puts "$node --> [$node data]"
+			# set children [$node childNodes]
+			# puts "Children: [llength $children]"
+			# if {[$child nodeType] eq "TEXT_NODE"} {
+				# lappend result [$child nodeValue]
+			# }
+			lappend result [$node asList]
+		}
+		return $result
+	}
+#############     PARSE MAP2XML   #############
+	:public method "map2xml" {} {
+		if {[file exists ${:tmp_mf}] != 0} {
+			set fp [open "${:tmp_mf}" r]
+			set file_data [read $fp]
+			close $fp
+			set data [split $file_data "\n"]
+			foreach line $data {
+				if {$line ne ""} {
+					: -local line $line
+				}
+			}
+		} else {return "File doesnt exists."}
+	}
+
 	:public method "line" {line} {
 		set keywords [dict values ${:keywds}]
 		set kw ""
@@ -156,9 +191,21 @@ nx::Class create Mapfile {
 					set data "\n\t[lindex $line 0]\n"
 					set tnode [${:doc} createTextNode $data]
 					$work_node appendChild $tnode
+				} elseif {[$work_node nodeName] eq "Metadata"} {
+					set attr [lindex $line 0]
+					set name [lindex $line 1]
+					# set tnode [${:doc} createTextNode $data]
+					# $work_node appendChild $tnode
+					: -local add_key_val_attr item $name [dict create name $attr]
+					# : -local add_key_val item "$name"
+					# : -local attr name "$attr"
+					# : -local add_key_attr item [dict create name [lindex $line 0] green [lindex $vals 1] blue [lindex $vals 2]]
+					# <item name="description">Cities</item>
 				}
 			}
 	}
+	
+	
 	
 	:private method "add_key_val" {key value} {
 		set work_node [lindex ${:stack} end]
@@ -176,39 +223,86 @@ nx::Class create Mapfile {
 		$work_node appendChild $node
 	}
 	
+	
+	:private method "add_key_val_attr" {key value attrd} {
+		set work_node [lindex ${:stack} end]
+		set node [${:doc} createElement $key]
+		$node appendChild [${:doc} createTextNode $value]
+		foreach attr [dict keys $attrd] attr_val [dict values $attrd] {
+			$node setAttribute $attr $attr_val
+		}
+		$work_node appendChild $node
+	
+	}
+	
 	:private method "attr" {attr val} {
 		set work_node [lindex ${:stack} end]
 		$work_node setAttribute $attr "$val"
 	}
 	
-	:public method get {tag} {
-		set result ""
-		set nodes [${:doc} getElementsByTagName $tag]
-		foreach node $nodes {
-			# puts "$node --> [$node data]"
-			# set children [$node childNodes]
-			# puts "Children: [llength $children]"
-			# if {[$child nodeType] eq "TEXT_NODE"} {
-				# lappend result [$child nodeValue]
-			# }
-			lappend result [$node asList]
-		}
-		return $result
-	}
+
 
 	:public method xml2map {} {
 	
 	}
 	
-	:public method as {{type xml}} {
-		if {$type eq "xml"} {
-			return [${:doc} asXML -xmlDeclaration 1 -encString UTF-8]
-		} elseif {$type eq "html"} {
-			return [${:doc} asHTML]
-		} elseif {$type eq "text"} {
-			return [${:doc} asText]
-		} elseif {$type eq "json"} {
-			return [${:doc} asJSON -indent 1]
+
+
+
+###########################################
+	:public method "parse_xml" {} {
+		set root [${:doc} documentElement]
+		set :xml_stack [list]
+		set :line ""
+		
+		set tmpxml [open ${:tmp_xml} a+]
+		# : -local explore $root $tmpxml
+		: -local expl [${:root} asList]
+		close $tmpxml
+
+		set fp [open ${:tmp_xml} r]
+		set file_data [read $fp]
+
+		close $fp
+		puts $file_data
+		
+	}
+	
+	:private method "expl" {a} {
+		foreach e $ {
+			puts $e
+		}
+	}
+	
+	
+	:private method "explore" {parent tmpxml} {
+		set top_tags [list Map Layer Class Style]
+		set type [$parent nodeType]
+		set name [$parent nodeName]
+
+		puts "$parent is a $type node named $name"
+		
+		
+		if {$type eq "ELEMENT_NODE"} {
+			set a [lsearch -inline $top_tags $name]
+			if {$a ne ""} {
+				set ${:line} [lappend :line [dict get ${:keywds} $name]]
+				set :xml_stack [lappend :xml_stack $parent]
+				puts "TAG $name NODE $parent"
+			}
+		} elseif {$type eq "TEXT_NODE"} {
+			set ${:line} [lappend :line "[$parent nodeValue]\n"]
+		}
+		
+		# if {$type != "ELEMENT_NODE"} then return
+
+		if {[llength [$parent attributes]]} {
+			puts "attributes: [join [$parent attributes] ", "]"
+		}
+		
+		puts $tmpxml ${:line}
+		foreach child [$parent childNodes] {
+			: -local explore $child $tmpxml
 		}
 	}
 
