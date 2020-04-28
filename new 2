@@ -14,7 +14,7 @@ nx::Class create Mapfile {
 			set :path ./
 			set :map_file [file join ${:path} ${:name}]
 		}
-		
+		# puts "FILE: ${:map_file}"
 		set :keywds [dict create Map MAP name NAME end END Layer LAYER Class CLASS Style STYLE angle ANGLE shapePath SHAPEPATH data DATA extent EXTENT size SIZE imageType IMAGETYPE imageColor IMAGECOLOR color COLOR status STATUS\
 		type TYPE OutputFormat OUTPUTFORMAT mimeType MIMETYPE driver DRIVER extension EXTENSION imageMode IMAGEMODE transparent TRANSPARENT resolution RESOLUTION defResolution DEFRESOLUTION fontSet FONTSET symbolSet SYMBOLSET\
 		units UNITS projection PROJECTION Legend LEGEND keySize KEYSIZE keySpacing KEYSPACING Label LABEL offset OFFSET shadowSize SHADOWSIZE QueryMap QUERYMAP ScaleBar SCALEBAR intervals INTERVALS Web WEB Metadata METADATA\
@@ -27,12 +27,18 @@ nx::Class create Mapfile {
 		set :tmp_mf [::fileutil::tempfile]
 
 		# File exists and has .map extention
-		if {[file exists ${:map_file}] != 0 || $fext eq ".map"} {
+		if {[file exists ${:map_file}] != 0 && $fext eq ".map"} {
+			dom createDocumentNode :doc
 			set fp [open ${:tmp_mf} a+]
 			puts $fp [: -local strip_comments] ;# Remove coments from .map file and write it to temp file tmp_mf
 			close $fp
 			: -local map2xml
-		} elseif {[file exists ${:map_file}] != 0 || $fext eq ".xml"} {
+		} elseif {[file exists ${:map_file}] != 0 && $fext eq ".xml"} {
+			set fp [open ${:map_file} r]
+			set fdata [read $fp]
+			close $fp
+
+			dom parse $fdata :doc
 			puts "File is XML"
 		}
 	}
@@ -109,18 +115,50 @@ nx::Class create Mapfile {
 
 
 
-	:public method get {tag} {
-		set result ""
-		set nodes [${:doc} getElementsByTagName $tag]
-		foreach node $nodes {
-			# puts "$node --> [$node data]"
-			# set children [$node childNodes]
-			# puts "Children: [llength $children]"
-			# if {[$child nodeType] eq "TEXT_NODE"} {
-				# lappend result [$child nodeValue]
-			# }
-			lappend result [$node asList]
+	:public method get {what} {
+		set tag [lsearch -inline -nocase [dict keys ${:keywds}] $what]
+		puts "TAG: $tag"
+		set result [dict create]
+		if {$tag ne ""} {
+			set nodes [${:doc} getElementsByTagName $tag]
+			puts "HOW MANY TAGS: [llength $nodes]"
+			if {[llength $nodes] != 0} {
+				set i 0
+				
+				foreach node $nodes {
+					set line [dict create]
+					set wl [$node asList]
+					# puts "RAW LIST DATA: $wl"
+					# puts "First: [lindex $wl 0]"
+					puts "----------------------"
+					# puts "First: [lindex $wl 1]"
+					# puts "First: [lindex $wl 2]"
+					dict for {key val} [lindex $wl 1] {
+						dict append line $key $val
+					}
+					puts "[llength [lindex $wl 2]]"
+					foreach o [lindex $wl 2] {
+						puts $o
+					}
+					puts "LINE $line"
+					# foreach attr [lindex $wl 1] {
+						# dict set $i [lindex $attr 0] [lindex $attr 1]
+					# }
+					# puts "$node --> [$node data]"
+					# set children [$node childNodes]
+					# puts "Children: [llength $children]"
+					# if {[$child nodeType] eq "TEXT_NODE"} {
+						# lappend result [$child nodeValue]
+					# }
+					# lappend result [$node asList]
+					dict merge $result [dict create $i $line]
+					incr i
+				}
+				
+			} else {lappend result "No Nodes"}
 		}
+		puts "------------"
+		puts $result
 		return $result
 	}
 #############     PARSE MAP2XML   #############
@@ -147,43 +185,44 @@ nx::Class create Mapfile {
 			}
 		}
 			if {$kw != ""} {
+				set xml_tag [dict keys [dict filter ${:keywds} value $kw]]
 				if {$kw eq "MAP"} {
 					set node [${:doc} createElement Map]
 					${:doc} appendChild $node
 					set :stack [lappend :stack $node]
 				} elseif {$kw eq "NAME" || $kw eq "STATUS" || $kw eq "TYPE"} {
-					: -local attr [string tolower $kw] [lindex $line 1]
+					: -local attr $xml_tag [lindex $line 1]
 				} elseif {$kw eq "LAYER" || $kw eq "CLASS" || $kw eq "OUTPUTFORMAT" || $kw eq "PROJECTION" || $kw eq "LEGEND" || $kw eq "LABEL" || $kw eq "QUERYMAP" || $kw eq "SCALEBAR" || $kw eq "WEB" || $kw eq "METADATA"} { ; #NODES WITH END
 					set work_node [lindex ${:stack} end]
-					set node [${:doc} createElement [string tolower $kw 1 end]]
+					set node [${:doc} createElement $xml_tag]
 					$work_node appendChild $node
 					set :stack [lappend :stack $node]
 				} elseif {$kw eq "STYLE"} {
 					set style_data [lindex $line 1]
 					if {$style_data eq ""} {
 						set work_node [lindex ${:stack} end]
-						set node [${:doc} createElement [string tolower $kw 1 end]]
+						set node [${:doc} createElement $xml_tag]
 						$work_node appendChild $node
 						set :stack [lappend :stack $node]
 					} else {
-						: -local add_key_val [string tolower $kw] $style_data
+						: -local add_key_val $xml_tag $style_data
 					}
 				} elseif {$kw eq "DATA" || $kw eq "EXTENT" || $kw eq "ANGLE" || $kw eq "IMAGETYPE" || $kw eq "SHAPEPATH"} {
-					: -local add_key_val [string tolower $kw] [lrange $line 1 end]
+					: -local add_key_val $xml_tag [lrange $line 1 end]
 				} elseif {$kw eq "SIZE" || $kw eq "KEYSIZE" || $kw eq "KEYSPACING" || $kw eq "OFFSET" || $kw eq "SHADOWSIZE" || $kw eq "INTERVALS"} { ;# VALUES WITH 2 ATTR
 					set vals [lrange $line 1 end]
 					if {[llength $vals] == 2} {
-						: -local add_key_attr [string tolower $kw] [dict create x [lindex $vals 0] y [lindex $vals 1]]
+						: -local add_key_attr $xml_tag [dict create x [lindex $vals 0] y [lindex $vals 1]]
 					} else {
-						: -local add_key_val [string tolower $kw] [lrange $line 1 end]
+						: -local add_key_val $xml_tag [lrange $line 1 end]
 					}
 				} elseif {$kw eq "IMAGECOLOR" || $kw eq "COLOR" || $kw eq "OUTLINECOLOR" } { ;# COLOR RELATED VALUES WITH # ATTR
 					set vals [lrange $line 1 end]
-					: -local add_key_attr [string tolower $kw] [dict create red [lindex $vals 0] green [lindex $vals 1] blue [lindex $vals 2]]
+					: -local add_key_attr $xml_tag [dict create red [lindex $vals 0] green [lindex $vals 1] blue [lindex $vals 2]]
 				} elseif {$kw eq "END"} {
 					set :stack [lreplace ${:stack} end end]
 				} else {
-					: -local add_key_val [string tolower $kw] [lindex [lrange $line 1 end] 0]
+					: -local add_key_val $xml_tag [lindex [lrange $line 1 end] 0]
 				}
 			} else {
 				set work_node [lindex ${:stack} end]
