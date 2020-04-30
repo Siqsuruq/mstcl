@@ -14,7 +14,8 @@ proc a {node} {
 		foreach attr $attrs {
 			dict append attr_dict $attr [$node getAttribute $attr] 
 		}
-		dict append ::res [$node nodeName] $attr_dict
+		# dict append ::res [$node nodeName] $attr_dict
+		puts "[$node nodeName] $attr_dict"
 	}
 	
 	if {[$node hasChildNodes]} {
@@ -23,13 +24,16 @@ proc a {node} {
 		}
 	} else {
 		if {[$node nodeType] eq "TEXT_NODE"} {
-			dict append ::res [[$node parentNode] nodeName] [$node nodeValue]
+			# dict append ::res [[$node parentNode] nodeName] [$node nodeValue]
+			puts "[[$node parentNode] nodeName] [$node nodeValue]"
 		}
 	}
 }
 
-foreach node [$doc childNodes] {
-	a $node
+set layers [$doc getElementsByTagName Layer]
+
+foreach node $layers {
+	puts [a $node]
 }
 
 puts "---"

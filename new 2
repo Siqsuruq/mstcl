@@ -16,9 +16,11 @@ nx::Class create Mapfile {
 		}
 		# puts "FILE: ${:map_file}"
 		set :keywds [dict create Map MAP name NAME end END Layer LAYER Class CLASS Style STYLE angle ANGLE shapePath SHAPEPATH data DATA extent EXTENT size SIZE imageType IMAGETYPE imageColor IMAGECOLOR color COLOR status STATUS\
-		type TYPE OutputFormat OUTPUTFORMAT mimeType MIMETYPE driver DRIVER extension EXTENSION imageMode IMAGEMODE transparent TRANSPARENT resolution RESOLUTION defResolution DEFRESOLUTION fontSet FONTSET symbolSet SYMBOLSET\
+		type TYPE OutputFormat OUTPUTFORMAT mimeType MIMETYPE driver DRIVER extension EXTENSION imageMode IMAGEMODE transparent TRANSPARENT resolution RESOLUTION defResolution DEFRESOLUTION fontSet FONTSET symbolSet SYMBOLSET Symbol SYMBOL\
 		units UNITS projection PROJECTION Legend LEGEND keySize KEYSIZE keySpacing KEYSPACING Label LABEL offset OFFSET shadowSize SHADOWSIZE QueryMap QUERYMAP ScaleBar SCALEBAR intervals INTERVALS Web WEB Metadata METADATA\
-		outlineColor OUTLINECOLOR template TEMPLATE]
+		outlineColor OUTLINECOLOR template TEMPLATE filled FILLED Points POINTS header HEADER footer FOOTER minScaleDenom MINSCALE maxScaleDenom MAXSCALE imagePath IMAGEPATH imageUrl IMAGEURL Reference REFERENCE image IMAGE\
+		minBoxSize MINBOXSIZE maxBoxSize MAXBOXSIZE markerSize MARKERSIZE marker MARKER offsite OFFSITE keyImage KEYIMAGE requires REQUIRES tileIndex TILEINDEX classItem CLASSITEM labelItem LABELITEM expression EXPRESSION group GROUP\
+		dump DUMP tolerance TOLERANCE]
 		
 		# Get file extension, create working copy (temporary file), empty dom in memory, initial stack
 		set fext [file extension ${:map_file}]
@@ -31,6 +33,7 @@ nx::Class create Mapfile {
 			dom createDocumentNode :doc
 			set fp [open ${:tmp_mf} a+]
 			puts $fp [: -local strip_comments] ;# Remove coments from .map file and write it to temp file tmp_mf
+			# puts [read $fp]
 			close $fp
 			: -local map2xml
 		} elseif {[file exists ${:map_file}] != 0 && $fext eq ".xml"} {
@@ -59,6 +62,7 @@ nx::Class create Mapfile {
 			}
 		}
 		return $stripped
+		# puts $stripped
 	}
 
 	:public method "print_stack" {args} {
@@ -110,7 +114,28 @@ nx::Class create Mapfile {
 	}
 
 
-
+	:private method node_dict {node} {
+		set attrs [$node attributes]
+		if {$attrs ne ""} {
+			set attr_dict [dict create]
+			foreach attr $attrs {
+				dict append attr_dict $attr [$node getAttribute $attr] 
+			}
+			# dict append ::res [$node nodeName] $attr_dict
+			puts "[$node nodeName] $attr_dict"
+		}
+		
+		if {[$node hasChildNodes]} {
+			foreach parent [$node childNodes] {
+				a $parent
+			}
+		} else {
+			if {[$node nodeType] eq "TEXT_NODE"} {
+				# dict append ::res [[$node parentNode] nodeName] [$node nodeValue]
+				puts "[[$node parentNode] nodeName] [$node nodeValue]"
+			}
+		}
+	}
 
 
 
@@ -118,49 +143,17 @@ nx::Class create Mapfile {
 	:public method get {what} {
 		set tag [lsearch -inline -nocase [dict keys ${:keywds}] $what]
 		puts "TAG: $tag"
+		puts "-------"
+		
 		set result [dict create]
 		if {$tag ne ""} {
 			set nodes [${:doc} getElementsByTagName $tag]
-			puts "HOW MANY TAGS: [llength $nodes]"
-			if {[llength $nodes] != 0} {
-				set i 0
-				
-				foreach node $nodes {
-					set line [dict create]
-					set wl [$node asList]
-					# puts "RAW LIST DATA: $wl"
-					# puts "First: [lindex $wl 0]"
-					puts "----------------------"
-					# puts "First: [lindex $wl 1]"
-					# puts "First: [lindex $wl 2]"
-					dict for {key val} [lindex $wl 1] {
-						dict append line $key $val
-					}
-					puts "[llength [lindex $wl 2]]"
-					foreach o [lindex $wl 2] {
-						puts $o
-					}
-					puts "LINE $line"
-					# foreach attr [lindex $wl 1] {
-						# dict set $i [lindex $attr 0] [lindex $attr 1]
-					# }
-					# puts "$node --> [$node data]"
-					# set children [$node childNodes]
-					# puts "Children: [llength $children]"
-					# if {[$child nodeType] eq "TEXT_NODE"} {
-						# lappend result [$child nodeValue]
-					# }
-					# lappend result [$node asList]
-					dict merge $result [dict create $i $line]
-					incr i
-				}
-				
-			} else {lappend result "No Nodes"}
+			foreach node $nodes {
+				puts [: -local node_dict $node]
+			}
 		}
-		puts "------------"
-		puts $result
-		return $result
 	}
+	
 #############     PARSE MAP2XML   #############
 	:public method "map2xml" {} {
 		if {[file exists ${:tmp_mf}] != 0} {
@@ -170,6 +163,7 @@ nx::Class create Mapfile {
 			set data [split $file_data "\n"]
 			foreach line $data {
 				if {$line ne ""} {
+					puts "PARSING LINE: $line"
 					: -local line $line
 				}
 			}
@@ -192,20 +186,20 @@ nx::Class create Mapfile {
 					set :stack [lappend :stack $node]
 				} elseif {$kw eq "NAME" || $kw eq "STATUS" || $kw eq "TYPE"} {
 					: -local attr $xml_tag [lindex $line 1]
-				} elseif {$kw eq "LAYER" || $kw eq "CLASS" || $kw eq "OUTPUTFORMAT" || $kw eq "PROJECTION" || $kw eq "LEGEND" || $kw eq "LABEL" || $kw eq "QUERYMAP" || $kw eq "SCALEBAR" || $kw eq "WEB" || $kw eq "METADATA"} { ; #NODES WITH END
+				} elseif {$kw eq "LAYER" || $kw eq "CLASS" || $kw eq "OUTPUTFORMAT" || $kw eq "PROJECTION" || $kw eq "LEGEND" || $kw eq "LABEL" || $kw eq "QUERYMAP" || $kw eq "SCALEBAR" || $kw eq "WEB" || $kw eq "METADATA" || $kw eq "POINTS" || $kw eq "REFERENCE"} { ; #NODES WITH END
 					set work_node [lindex ${:stack} end]
 					set node [${:doc} createElement $xml_tag]
 					$work_node appendChild $node
 					set :stack [lappend :stack $node]
-				} elseif {$kw eq "STYLE"} {
-					set style_data [lindex $line 1]
-					if {$style_data eq ""} {
+				} elseif {$kw eq "STYLE" || $kw eq "SYMBOL"} {
+					set data [lindex $line 1]
+					if {$data eq ""} {
 						set work_node [lindex ${:stack} end]
 						set node [${:doc} createElement $xml_tag]
 						$work_node appendChild $node
 						set :stack [lappend :stack $node]
 					} else {
-						: -local add_key_val $xml_tag $style_data
+						: -local add_key_val $xml_tag $data
 					}
 				} elseif {$kw eq "DATA" || $kw eq "EXTENT" || $kw eq "ANGLE" || $kw eq "IMAGETYPE" || $kw eq "SHAPEPATH"} {
 					: -local add_key_val $xml_tag [lrange $line 1 end]
@@ -216,7 +210,7 @@ nx::Class create Mapfile {
 					} else {
 						: -local add_key_val $xml_tag [lrange $line 1 end]
 					}
-				} elseif {$kw eq "IMAGECOLOR" || $kw eq "COLOR" || $kw eq "OUTLINECOLOR" } { ;# COLOR RELATED VALUES WITH # ATTR
+				} elseif {$kw eq "IMAGECOLOR" || $kw eq "COLOR" || $kw eq "OUTLINECOLOR" || $kw eq "OFFSITE"} { ;# COLOR RELATED VALUES WITH # ATTR
 					set vals [lrange $line 1 end]
 					: -local add_key_attr $xml_tag [dict create red [lindex $vals 0] green [lindex $vals 1] blue [lindex $vals 2]]
 				} elseif {$kw eq "END"} {
@@ -233,13 +227,10 @@ nx::Class create Mapfile {
 				} elseif {[$work_node nodeName] eq "Metadata"} {
 					set attr [lindex $line 0]
 					set name [lindex $line 1]
-					# set tnode [${:doc} createTextNode $data]
-					# $work_node appendChild $tnode
 					: -local add_key_val_attr item $name [dict create name $attr]
-					# : -local add_key_val item "$name"
-					# : -local attr name "$attr"
-					# : -local add_key_attr item [dict create name [lindex $line 0] green [lindex $vals 1] blue [lindex $vals 2]]
-					# <item name="description">Cities</item>
+				} elseif {[$work_node nodeName] eq "Points"} {
+					set vals [lrange $line 0 end]
+					: -local add_key_attr point [dict create x [lindex $vals 0] y [lindex $vals 1]]
 				}
 			}
 	}
@@ -347,4 +338,4 @@ nx::Class create Mapfile {
 
 }
 
-Mapfile create map -name ./test_data/test_mapfile.map
+Mapfile create map -name ./test_data/itasca.map
